@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String               @id @default(cuid()) // User ID হিসেবে CUID
+  username      String               @unique
+  email         String               @unique
+  password      String // পাসওয়ার্ড এনক্রিপ্ট করে সেভ করা উচিত
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  conversations UserInConversation[] // User যে সকল Conversation এর অংশ
+  messages      Message[] // User এর পাঠানো মেসেজ
+  readMessages  Message[]            @relation("ReadMessages")
+}
+
+model Conversation {
+  id           String               @id @default(cuid()) // Conversation ID হিসেবে CUID
+  name         String? // Group chat এর জন্য নাম, 1-1 chat এর জন্য null থাকতে পারে
+  isGroup      Boolean              @default(false)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  participants UserInConversation[] // Conversation এর অংশগ্রহণকারীরা
+  messages     Message[] // এই Conversation এর সকল মেসেজ
+}
+
+// একটি জয়েন টেবিল, কারণ একটি Conversation এ একাধিক User থাকতে পারে
+// এবং একজন User একাধিক Conversation এর অংশ হতে পারে।
+model UserInConversation {
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  joinedAt       DateTime     @default(now())
+
+  @@id([userId, conversationId]) // প্রাইমারি কি দুটি ফিল্ড নিয়ে গঠিত
+}
+
+model Message {
+  id             String       @id @default(cuid()) // Message ID হিসেবে CUID
+  content        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  senderId       String // Foreign key to User
+  sender         User         @relation(fields: [senderId], references: [id])
+  conversationId String // Foreign key to Conversation
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  readBy         User[]       @relation("ReadMessages")
+}
