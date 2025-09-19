@@ -18,11 +18,12 @@ model User {
   id            String               @id @default(cuid()) // User ID হিসেবে CUID
   username      String               @unique
   email         String               @unique
-  password      String // পাসওয়ার্ড এনক্রিপ্ট করে সেভ করা উচিত
+  password      String               // হ্যাশ করা পাসওয়ার্ড এখানে সেভ হবে
+  refreshToken  String?              // রিফ্রেশ টোকেন সেভ করার জন্য
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
-  conversations UserInConversation[] // User যে সকল Conversation এর অংশ
-  messages      Message[] // User এর পাঠানো মেসেজ
+  conversations UserInConversation[]
+  messages      Message[]
   readMessages  Message[]            @relation("ReadMessages")
 }
 
