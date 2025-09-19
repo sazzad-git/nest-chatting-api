@@ -12,6 +12,9 @@ import { UsersService } from './users.service'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard' // JWT Guard ইম্পোর্ট করুন
 import { GetCurrentUserId } from '../auth/decorators/get-current-user.decorator'
+import { RolesGuard } from 'src/auth/guards/roles.guard'
+import { Roles } from '../auth/decorators/roles.decorator'
+import { Role } from '@prisma/client'
 
 @Controller('users')
 @UseGuards(JwtAuthGuard) // এই কন্ট্রোলারের সকল রুট ডিফল্টভাবে সুরক্ষিত
@@ -21,6 +24,8 @@ export class UsersController {
   // সাধারণত শুধুমাত্র অ্যাডমিন সকল ইউজার দেখতে পারে
   // @Roles(Role.ADMIN) // আপনি রোল-বেসড অথরাইজেশন যোগ করতে পারেন
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   findAll() {
     return this.usersService.findAllUsers()
   }

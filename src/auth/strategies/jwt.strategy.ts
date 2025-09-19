@@ -4,6 +4,7 @@ import { PassportStrategy } from '@nestjs/passport'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { UsersService } from '../../users/users.service'
+import { Role } from '@prisma/client'
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -24,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     })
   }
 
-  async validate(payload: { sub: string; username: string }) {
+  async validate(payload: { sub: string; username: string; roles: Role[] }) {
     // এখানে আপনি ইউজার আইডি দিয়ে ডেটাবেস থেকে ইউজারকে লোড করতে পারেন
     // এবং প্রয়োজনে অতিরিক্ত ডেটা payload এ যোগ করতে পারেন।
     const user = await this.usersService.findById(payload.sub)

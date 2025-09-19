@@ -14,49 +14,64 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER // সাধারণ ব্যবহারকারী
+  ADMIN // অ্যাডমিনিস্ট্রেটর
+}
+
 model User {
   id            String               @id @default(cuid()) // User ID হিসেবে CUID
   username      String               @unique
   email         String               @unique
-  password      String               // হ্যাশ করা পাসওয়ার্ড এখানে সেভ হবে
-  refreshToken  String?              // রিফ্রেশ টোকেন সেভ করার জন্য
+  password      String // হ্যাশ করা পাসওয়ার্ড এখানে সেভ হবে
+  refreshToken  String? // রিফ্রেশ টোকেন সেভ করার জন্য
+  roles         Role[]               @default([USER])
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
+  //relations
   conversations UserInConversation[]
   messages      Message[]
+  adminOfGroups Conversation[]       @relation("GroupAdmin")
   readMessages  Message[]            @relation("ReadMessages")
 }
 
 model Conversation {
-  id           String               @id @default(cuid()) // Conversation ID হিসেবে CUID
-  name         String? // Group chat এর জন্য নাম, 1-1 chat এর জন্য null থাকতে পারে
-  isGroup      Boolean              @default(false)
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  participants UserInConversation[] // Conversation এর অংশগ্রহণকারীরা
-  messages     Message[] // এই Conversation এর সকল মেসেজ
+  id        String   @id @default(cuid())
+  name      String? // গ্রুপ চ্যাটের জন্য নাম
+  isGroup   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  participants UserInConversation[]
+  messages     Message[]
+
+  // গ্রুপ চ্যাটের অ্যাডমিন (ঐচ্ছিক)
+  adminId String?
+  admin   User?   @relation("GroupAdmin", fields: [adminId], references: [id], onDelete: SetNull)
 }
 
-// একটি জয়েন টেবিল, কারণ একটি Conversation এ একাধিক User থাকতে পারে
-// এবং একজন User একাধিক Conversation এর অংশ হতে পারে।
+// User এবং Conversation এর মধ্যে Many-to-Many সম্পর্কের জন্য Join Table
 model UserInConversation {
   userId         String
-  user           User         @relation(fields: [userId], references: [id])
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  joinedAt       DateTime     @default(now())
 
-  @@id([userId, conversationId]) // প্রাইমারি কি দুটি ফিল্ড নিয়ে গঠিত
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, conversationId]) // Composite primary key
 }
 
 model Message {
-  id             String       @id @default(cuid()) // Message ID হিসেবে CUID
-  content        String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  senderId       String // Foreign key to User
-  sender         User         @relation(fields: [senderId], references: [id])
-  conversationId String // Foreign key to Conversation
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   readBy         User[]       @relation("ReadMessages")
 }

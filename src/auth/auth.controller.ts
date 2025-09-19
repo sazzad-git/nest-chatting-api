@@ -8,6 +8,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { LocalAuthGuard } from './guards/local-auth.guard' // পরে তৈরি করা হবে
@@ -43,8 +44,9 @@ export class AuthController {
   @UseGuards(LocalAuthGuard) // Local Strategy ব্যবহার করুন
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req) {
+  async login(@Req() req: any) {
     // req.user LocalAuthGuard থেকে আসবে
+    // console.log(req.user)
     const { accessToken, refreshToken } = await this.authService.login(req.user)
     return {
       user: req.user,

@@ -8,7 +8,7 @@ import { UsersService } from '../users/users.service'
 import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcryptjs'
-import { User } from '@prisma/client'
+import { Role, User } from '@prisma/client'
 
 @Injectable()
 export class AuthService {
@@ -19,8 +19,8 @@ export class AuthService {
   ) {}
 
   // ইউজার যাচাইয়ের জন্য (Local Strategy দ্বারা ব্যবহৃত)
-  async validateUser(username: string, pass: string): Promise<any> {
-    const user = await this.usersService.findByUsername(username)
+  async validateUser(email: string, pass: string): Promise<any> {
+    const user = await this.usersService.findByEmail(email)
     if (user && (await bcrypt.compare(pass, user.password))) {
       const { password, ...result } = user
       return result
@@ -46,17 +46,19 @@ export class AuthService {
   }
 
   // JWT অ্যাক্সেস এবং রিফ্রেশ টোকেন তৈরি করুন
-  async getTokens(userId: string, username: string) {
+  async getTokens(userId: string, username: string, roles: Role[]) {
+    // <-- roles প্যারামিটার যোগ করুন
+    const payload = { sub: userId, username, roles } // <-- payload-এ roles যোগ করুন
+
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(
-        { sub: userId, username },
-        {
-          secret: this.configService.get<string>('JWT_ACCESS_TOKEN_SECRET'),
-          expiresIn: this.configService.get<string>(
-            'JWT_ACCESS_TOKEN_EXPIRATION_TIME'
-          ),
-        }
-      ),
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.get<string>('JWT_ACCESS_TOKEN_SECRET'),
+        expiresIn: this.configService.get<string>(
+          'JWT_ACCESS_TOKEN_EXPIRATION_TIME'
+        ),
+      }),
+      // রিফ্রেশ টোকেনের payload-এ roles না রাখাই ভালো, কারণ এর কাজ শুধু নতুন টোকেন আনা।
+      // তবে রাখলেও সমস্যা নেই।
       this.jwtService.signAsync(
         { sub: userId, username },
         {
@@ -74,7 +76,8 @@ export class AuthService {
   async login(user: any) {
     const { accessToken, refreshToken } = await this.getTokens(
       user.id,
-      user.username
+      user.username,
+      user.roles
     )
     await this.usersService.updateRefreshToken(user.id, refreshToken)
     return { user, accessToken, refreshToken }
@@ -104,7 +107,8 @@ export class AuthService {
 
     const { accessToken, refreshToken: newRefreshToken } = await this.getTokens(
       user.id,
-      user.username
+      user.username,
+      user.roles
     )
     await this.usersService.updateRefreshToken(user.id, newRefreshToken) // নতুন রিফ্রেশ টোকেন সেভ করুন
     return { accessToken, refreshToken: newRefreshToken }
