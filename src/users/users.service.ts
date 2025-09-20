@@ -24,6 +24,12 @@ export class UsersService {
     return this.prisma.user.findMany()
   }
 
+  async findAllExcept(userId: string) {
+    return this.prisma.user.findMany({
+      where: { NOT: { id: userId } },
+      select: { id: true, username: true },
+    })
+  }
   async updateUser(id: string, updateUserDto: Partial<CreateUserDto>) {
     return this.prisma.user.update({
       where: { id },

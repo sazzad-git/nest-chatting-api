@@ -11,10 +11,14 @@ import {
 import { UsersService } from './users.service'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard' // JWT Guard ইম্পোর্ট করুন
-import { GetCurrentUserId } from '../auth/decorators/get-current-user.decorator'
+import {
+  GetCurrentUser,
+  GetCurrentUserId,
+} from '../auth/decorators/get-current-user.decorator'
 import { RolesGuard } from 'src/auth/guards/roles.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
 import { Role } from '@prisma/client'
+import type { User } from '@prisma/client'
 
 @Controller('users')
 @UseGuards(JwtAuthGuard) // এই কন্ট্রোলারের সকল রুট ডিফল্টভাবে সুরক্ষিত
@@ -30,6 +34,25 @@ export class UsersController {
     return this.usersService.findAllUsers()
   }
 
+  // অ্যাডমিনদের জন্য সকল ইউজার দেখার রুট
+  @Get('all')
+  @Roles(Role.ADMIN)
+  @UseGuards(RolesGuard)
+  adminFindAllUsers() {
+    return this.usersService.findAllUsers() // সকল ইউজার
+  }
+
+  // চ্যাটের জন্য ইউজার খোঁজার রুট (সকল লগইন করা ইউজারের জন্য)
+  @Get('search-for-chat')
+  findAllUsersForChat(@GetCurrentUser() currentUser: User) {
+    return this.usersService.findAllExcept(currentUser.id)
+  }
+
+  @Get() // GET /users
+  findAllUsers(@GetCurrentUser() currentUser: User) {
+    // নিজেকে বাদ দিয়ে বাকি সব ব্যবহারকারীকে ফেরত দিন
+    return this.usersService.findAllExcept(currentUser.id)
+  }
   // একজন ইউজার নিজের প্রোফাইল দেখতে পারে
   @Get('profile')
   getProfile(@GetCurrentUserId() userId: string) {

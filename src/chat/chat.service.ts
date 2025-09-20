@@ -1,4 +1,3 @@
-// src/chat/chat.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -55,7 +54,7 @@ export class ChatService {
         participants: {
           include: { user: { select: { id: true, username: true } } },
         },
-        messages: { orderBy: { createdAt: 'desc' }, take: 1 }, // সর্বশেষ মেসেজ
+        messages: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
     })
   }
@@ -82,7 +81,7 @@ export class ChatService {
     conversationId: string,
     content: string
   ) {
-    return this.prisma.message.create({
+    const message = await this.prisma.message.create({
       data: {
         senderId,
         conversationId,
@@ -92,6 +91,39 @@ export class ChatService {
         sender: { select: { id: true, username: true } },
         conversation: { include: { participants: true } }, // নোটিফিকেশনের জন্য অংশগ্রহণকারীদের প্রয়োজন
       },
+    })
+    await this.prisma.userInConversation.updateMany({
+      where: {
+        conversationId: conversationId,
+        NOT: { userId: senderId }, // প্রেরককে বাদ দিন
+      },
+      data: {
+        unreadCount: {
+          increment: 1, // আগের মানের সাথে ১ যোগ করুন
+        },
+      },
+    })
+    return message
+  }
+
+  // মেসেজ 'seen' করার জন্য নতুন সার্ভিস মেথড
+  async markConversationAsSeen(userId: string, conversationId: string) {
+    // ইউজার এই কথোপকথনের অংশ কিনা তা নিশ্চিত করুন (ঐচ্ছিক কিন্তু ভালো)
+    const isParticipant = await this.isUserParticipant(userId, conversationId)
+    if (!isParticipant) {
+      throw new UnauthorizedException(
+        'You are not a participant of this conversation.'
+      )
+    }
+
+    return this.prisma.userInConversation.update({
+      where: {
+        userId_conversationId: {
+          userId,
+          conversationId,
+        },
+      },
+      data: { unreadCount: 0 },
     })
   }
 

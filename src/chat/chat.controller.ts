@@ -3,6 +3,8 @@ import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common'
 import { ChatService } from './chat.service'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { GetCurrentUser } from '../auth/decorators/get-current-user.decorator'
+// import { User } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import type { User } from '@prisma/client'
 
 class CreateConversationDto {
@@ -10,6 +12,9 @@ class CreateConversationDto {
   isGroup: boolean
   name?: string
 }
+
+const UserType: User = {} as any
+const _unused = Prisma.ModelName.User
 
 @UseGuards(JwtAuthGuard)
 @Controller('chat')

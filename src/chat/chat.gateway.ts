@@ -77,10 +77,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() payload: { conversationId: string; content: string },
     @ConnectedSocket() client: Socket
   ) {
-    const user = client.data.user
+    const user = client.data.user // অথেনটিকেটেড ইউজার
     const { conversationId, content } = payload
 
-    // মেসেজ ডেটাবেসে সেভ করুন
+    // --- START: অথোরাইজেশন চেক যোগ করুন ---
+    const isParticipant = await this.chatService.isUserParticipant(
+      user.sub, // ইউজারের আইডি
+      conversationId
+    )
+
+    if (!isParticipant) {
+      // যদি ইউজার অংশগ্রহণকারী না হয়, তাহলে একটি এরর ইভেন্ট পাঠান
+      client.emit('error', {
+        message: 'You are not a participant of this conversation.',
+      })
+      this.logger.warn(
+        `User ${user.sub} tried to send message to conversation ${conversationId} without being a participant.`
+      )
+      return // ফাংশন থেকে বেরিয়ে যান
+    }
+    // --- END: অথোরাইজেশন চেক ---
+
+    // মেসেজ ডেটাবেসে সেভ করুন (এই অংশটি ঠিক আছে)
     const message = await this.chatService.createMessage(
       user.sub,
       conversationId,
@@ -92,6 +110,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // নোটিফিকেশন পাঠান
     this.handleNotification(message, user.sub)
+  }
+
+  @SubscribeMessage('markAsSeen')
+  async handleMarkAsSeen(
+    @MessageBody() conversationId: string,
+    @ConnectedSocket() client: Socket
+  ) {
+    const userId = client.data.user.sub
+    // এখন this.prisma এর পরিবর্তে chatService এর মেথড কল করুন
+    await this.chatService.markConversationAsSeen(userId, conversationId)
+
+    // অন্য অংশগ্রহণকারীদের কাছে 'conversationSeen' ইভেন্ট পাঠান
+    client
+      .to(conversationId)
+      .emit('conversationSeen', { conversationId, userId })
+
+    this.logger.log(
+      `User ${userId} marked conversation ${conversationId} as seen.`
+    )
   }
 
   // লাইভ নোটিফিকেশন হ্যান্ডেল করা

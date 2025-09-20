@@ -6,7 +6,7 @@ import { PrismaModule } from './prisma/prisma.module'
 import { AuthModule } from './auth/auth.module' // <--- এটি যোগ করুন
 import { UsersModule } from './users/users.module' // User ম্যানেজমেন্টের জন্য (যদি থাকে)
 import { ConfigModule } from '@nestjs/config' // <--- এটি যোগ করুন
-import { ChatModule } from './chat/chat.module';
+import { ChatModule } from './chat/chat.module'
 
 @Module({
   imports: [
